@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday Manu! 🎉</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #f3f4f6;
+        }
+        #matrixCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none; opacity: 0.25;
+        }
+        #particleCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2; pointer-events: none;
+        }
+        .ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; display: flex; flex-direction: column;
+            justify-content: space-between; align-items: center;
+            padding: 25px; pointer-events: none;
+        }
+        .interactive { pointer-events: auto; cursor: pointer; }
+        
+        /* Top Navigation Bar */
+        .nav-bar {
+            display: flex; gap: 10px; background: rgba(15, 23, 42, 0.85);
+            padding: 8px 16px; border-radius: 30px; border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); backdrop-filter: blur(10px);
+        }
+        .nav-btn {
+            background: transparent; border: none; color: #94a3b8;
+            font-size: 13px; font-weight: 600; padding: 6px 14px;
+            border-radius: 20px; transition: all 0.3s ease;
+        }
+        .nav-btn.active, .nav-btn:hover {
+            background: #00f0ff; color: #030712;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Center Modal Cards */
+        .card-container {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 90%; max-width: 420px;
+            background: rgba(10, 15, 30, 0.95);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 20px; padding: 25px;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.2);
+            backdrop-filter: blur(15px);
+            opacity: 0; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none; display: flex; flex-direction: column; align-items: center;
+        }
+        .card-container.visible {
+            opacity: 1; transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+
+        /* Memories Carousel */
+        .media-box {
+            width: 100%; height: 260px; border-radius: 12px;
+            overflow: hidden; background: #000; position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .media-box img, .media-box video {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .memory-caption {
+            margin-top: 15px; text-align: center; font-size: 15px;
+            line-height: 1.5; color: #e2e8f0; font-weight: 500;
+        }
+        .carousel-controls {
+            display: flex; justify-content: space-between; width: 100%; margin-top: 20px;
+        }
+        .action-btn {
+            background: linear-gradient(135deg, #00f0ff, #0077ff);
+            color: #030712; border: none; padding: 10px 20px;
+            border-radius: 25px; font-weight: 700; font-size: 13px;
+            cursor: pointer; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 0 25px rgba(0, 240, 255, 0.7); }
+
+        /* Envelope / Letter Modal */
+        .envelope-icon { font-size: 45px; margin-bottom: 8px; animation: float 2s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .letter-content {
+            font-size: 13px; line-height: 1.6; color: #cbd5e1;
+            max-height: 200px; overflow-y: auto; text-align: left; width: 100%;
+            padding-right: 5px; white-space: pre-wrap;
+        }
+
+        /* Bottom Status */
+        .footer-hint {
+            font-size: 12px; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase;
+            background: rgba(15, 23, 42, 0.8); padding: 8px 16px; border-radius: 20px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrixCanvas"></canvas>
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="ui-layer">
+        <!-- Navigation -->
+        <div class="nav-bar interactive">
+            <button class="nav-btn active" onclick="switchStage(0)">1. Intro</button>
+            <button class="nav-btn" onclick="switchStage(1)">2. Memories</button>
+            <button class="nav-btn" onclick="switchStage(2)">3. Heart & Letter</button>
+        </div>
+
+        <div class="footer-hint" id="stageHint">Happy Birthday Manu! 🎉</div>
+
+        <!-- Stage 2: Memory Carousel Card -->
+        <div class="card-container" id="memoryCard">
+            <div class="media-box" id="mediaContainer"></div>
+            <div class="memory-caption" id="memoryCaption">Loading memory...</div>
+            <div class="carousel-controls">
+                <button class="action-btn" onclick="prevMemory()">← Prev</button>
+                <span id="counterIndicator" style="font-size: 13px; color: #94a3b8; align-self: center;">1 / 1</span>
+                <button class="action-btn" onclick="nextMemory()">Next →</button>
+            </div>
+        </div>
+
+        <!-- Stage 3: Letter Card -->
+        <div class="card-container" id="letterCard">
+            <div class="envelope-icon">💌</div>
+            <h3 style="color: #00f0ff; margin-bottom: 8px; font-size: 16px;">Happy Birthday Manu</h3>
+            <div class="letter-content" id="typewriterText"></div>
+            <button class="action-btn" style="margin-top: 15px; width: 100%;" onclick="replayExperience()">Replay Experience 💫</button>
+        </div>
+    </div>
+
+    <script>
+        // --- MEDIA FILES SETUP (Video 3 only) ---
+        const MEMORIES_DATA = [
+            { type: 'video', src: 'images/video3.mp4', label: "Now we're long distance, but we still love each other just as much. Happy Birthday Manu! ❤️" }
+        ];
+
+        let currentMemoryIndex = 0;
+        let currentStage = 0;
+
+        // --- MATRIX RAIN BACKGROUND ---
+        const matrixCanvas = document.getElementById('matrixCanvas');
+        const mCtx = matrixCanvas.getContext('2d');
+        const pCanvas = document.getElementById('particleCanvas');
+        const pCtx = pCanvas.getContext('2d');
+
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        function resizeCanvases() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            matrixCanvas.width = width;
+            matrixCanvas.height = height;
+            pCanvas.width = width;
+            pCanvas.height = height;
+        }
+        window.addEventListener('resize', resizeCanvases);
+        resizeCanvases();
+
+        const chars = "MANU720260123456789";
+        const fontSize = 14;
+        let columns = Math.floor(width / fontSize);
+        let drops = Array(columns).fill(1);
+
+        function drawMatrix() {
+            mCtx.fillStyle = 'rgba(3, 7, 18, 0.15)';
+            mCtx.fillRect(0, 0, width, height);
+            mCtx.fillStyle = '#00f0ff';
+            mCtx.font = fontSize + 'px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                mCtx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 50);
+
+        // --- PARTICLE ENGINE ---
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.targetX = width / 2;
+                this.targetY = height / 2;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 2.2 + 1;
+                this.color = '#00f0ff';
+            }
+            update() {
+                let dx = this.targetX - this.x;
+                let dy = this.targetY - this.y;
+                this.x += dx * 0.12 + this.vx;
+                this.y += dy * 0.12 + this.vy;
+                this.vx *= 0.85;
+                this.vy *= 0.85;
+            }
+            draw() {
+                pCtx.fillStyle = this.color;
+                pCtx.beginPath();
+                pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+        }
+
+        const particles = [];
+        for (let i = 0; i < 1500; i++) particles.push(new Particle());
+
+        function getSafeTextPoints(text) {
+            const offC = document.createElement('canvas');
+            const oCtx = offC.getContext('2d', { willReadFrequently: true });
+            offC.width = 600;
+            offC.height = 180;
+            oCtx.fillStyle = '#ffffff';
+            oCtx.font = '900 65px Arial, sans-serif';
+            oCtx.textAlign = 'center';
+            oCtx.textBaseline = 'middle';
+            oCtx.fillText(text, 300, 90);
+
+            let imgData;
+            try {
+                imgData = oCtx.getImageData(0, 0, 600, 180).data;
+            } catch (e) {
+                return [];
+            }
+
+            const points = [];
+            const step = 3;
+            for (let y = 0; y < 180; y += step) {
+                for (let x = 0; x < 600; x += step) {
+                    const idx = (y * 600 + x) * 4;
+                    if (imgData[idx + 3] > 128) {
+                        points.push({
+                            x: (x - 300) * (Math.min(width, 900) / 600) + width / 2,
+                            y: (y - 90) * (Math.min(width, 900) / 600) + height / 2
+                        });
+                    }
+                }
+            }
+            return points;
+        }
+
+        function getHeartPoints() {
+            const points = [];
+            const scale = Math.min(width, height) / 36;
+            for (let t = 0; t < Math.PI * 2; t += 0.04) {
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                points.push({
+                    x: width / 2 + x * scale,
+                    y: height / 2 + y * scale - 25
+                });
+            }
+            return points;
+        }
+
+        let sequenceIndex = 0;
+        const sequenceTexts = ["3", "2", "1", "HAPPY", "BIRTHDAY", "MANU", "7 YEARS"];
+        let heartMode = false;
+        let heartTimer = 0;
+
+        function runSequence() {
+            if (sequenceIndex < sequenceTexts.length) {
+                const txt = sequenceTexts[sequenceIndex];
+                const pts = getSafeTextPoints(txt);
+                
+                particles.forEach((p, idx) => {
+                    const pt = pts.length > 0 ? pts[idx % pts.length] : { x: width/2, y: height/2 };
+                    p.targetX = pt.x + (Math.random() - 0.5) * 4;
+                    p.targetY = pt.y + (Math.random() - 0.5) * 4;
+                    p.color = sequenceIndex % 2 === 0 ? '#00f0ff' : '#ffffff';
+                });
+
+                document.getElementById('stageHint').innerText = `Countdown: ${txt}`;
+                sequenceIndex++;
+                setTimeout(runSequence, 2000);
+            } else {
+                heartMode = true;
+                document.getElementById('stageHint').innerText = "Happy Birthday Manu! ❤️";
+            }
+        }
+
+        function animate() {
+            pCtx.clearRect(0, 0, width, height);
+
+            if (heartMode) {
+                heartTimer += 0.05;
+                let s = 1 + Math.sin(heartTimer) * 0.04;
+                const hPts = getHeartPoints();
+                particles.forEach((p, idx) => {
+                    const pt = hPts[idx % hPts.length];
+                    p.targetX = width / 2 + (pt.x - width / 2) * s;
+                    p.targetY = height / 2 + (pt.y - height / 2) * s;
+                    p.color = '#00f0ff';
+                });
+            }
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        function switchStage(stage) {
+            currentStage = stage;
+            document.querySelectorAll('.nav-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === stage);
+            });
+
+            const mCard = document.getElementById('memoryCard');
+            const lCard = document.getElementById('letterCard');
+            const hint = document.getElementById('stageHint');
+
+            mCard.classList.remove('visible');
+            lCard.classList.remove('visible');
+
+            if (stage === 0) {
+                hint.innerText = "Happy Birthday Manu! 🎉";
+            } else if (stage === 1) {
+                mCard.classList.add('visible');
+                hint.innerText = "Our 7-year memory lane ✨";
+                renderCurrentMemory();
+            } else if (stage === 2) {
+                lCard.classList.add('visible');
+                hint.innerText = "A special birthday note for Manu ❤️";
+                startTypewriter();
+            }
+        }
+
+        function renderCurrentMemory() {
+            const mem = MEMORIES_DATA[currentMemoryIndex];
+            const container = document.getElementById('mediaContainer');
+            container.innerHTML = '';
+
+            const vid = document.createElement('video');
+            vid.src = mem.src;
+            vid.autoplay = true;
+            vid.loop = true;
+            vid.muted = true;
+            vid.playsInline = true;
+            container.appendChild(vid);
+
+            document.getElementById('memoryCaption').innerText = mem.label;
+            document.getElementById('counterIndicator').innerText = `${currentMemoryIndex + 1} / ${MEMORIES_DATA.length}`;
+        }
+
+        function nextMemory() {
+            currentMemoryIndex = (currentMemoryIndex + 1) % MEMORIES_DATA.length;
+            renderCurrentMemory();
+        }
+
+        function prevMemory() {
+            currentMemoryIndex = (currentMemoryIndex - 1 + MEMORIES_DATA.length) % MEMORIES_DATA.length;
+            renderCurrentMemory();
+        }
+
+        const fullMessage = `Dear Manu,
+
+Happy Birthday! 🎂✨
+
+It’s crazy to think we’ve been friends since Grade 8—that’s 7 whole years of memories, growing up, and sticking by each other through everything. From that unforgettable moment I accidentally stabbed you with a pen in Grade 8 🖊️😂 to all our ups and downs, we've always found our way back.
+
+Even though we're long distance now, nothing has changed. You are still my absolute favorite person, and I love you so much. 
+
+Here's to celebrating you today and many more years of friendship ahead! ❤️`;
+
+        let typewriterStarted = false;
+        function startTypewriter() {
+            if (typewriterStarted) return;
+            typewriterStarted = true;
+            const el = document.getElementById('typewriterText');
+            el.innerText = '';
+            let i = 0;
+            function type() {
+                if (i < fullMessage.length) {
+                    el.innerText += fullMessage.charAt(i);
+                    i++;
+                    setTimeout(type, 20);
+                }
+            }
+            type();
+        }
+
+        function replayExperience() {
+            sequenceIndex = 0;
+            heartMode = false;
+            typewriterStarted = false;
+            switchStage(0);
+            runSequence();
+        }
+
+        // Kick off loops immediately
+        resizeCanvases();
+        animate();
+        setTimeout(runSequence, 300);
+    </script>
+</body>
+</html>
